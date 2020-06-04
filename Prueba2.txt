@@ -1,0 +1,18 @@
+VAR
+--/  as	d23 . ?
+
+asd/--
+--/aaa--/bbb/--ccc/--
+
+	[Float]:[aa, bb];
+	[Integer, Float, Float]:[b,a,d];
+	[Integer, Integer, Integer, Float, Float]:[p1,p2,p3,p4];
+	[Integer]:[h1];
+	[Float, Integer, Float, Integer, Float]:[h2, h1];
+
+ENDVAR
+
+
+CONST constante3 = "HOLA";
+b = 2;
+aa = 3.;
