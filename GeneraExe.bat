@@ -8,12 +8,12 @@ echo "Se genero el Sintactico"
 pause
 cls
 echo "Compilacion en curso"
-c:\MinGW\bin\gcc.exe lex.yy.c y.tab.c -o Segunda.exe
+c:\MinGW\bin\gcc.exe lex.yy.c y.tab.c -o GrupoR2.exe
 pause
-Segunda.exe Prueba2.txt
+GrupoR2.exe Prueba.txt
 del lex.yy.c
 del y.tab.c
 del y.output
 del y.tab.h
-del Segunda.exe
+del GrupoR2.exe
 pause

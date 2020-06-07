@@ -18,6 +18,7 @@ void exportarTablas();
 t_pila pilaPos;
 t_pila pilaRepeat;
 t_pila pilaFiltro;
+t_pila pilaOr;
 /**********************************/
 
 /************* ELEMENTOS NECESARIOS PARA TERCERTOS ********/
@@ -33,6 +34,7 @@ regTerceto terceto;
 regTerceto tablaTerceto[2048];
 
 int numeroTerceto = 0;
+int condicionDoble = 0;
 char valorConstante[50];
 char aux1[31], aux2[31], opSalto[6];
 
@@ -105,10 +107,9 @@ char aux[10];
 char cteAux[50];
 tipoTercetoAsm tercetoLeido[2048];
 
-void generarAssembler(void);
 void crearTercetoAsm(int ind, char *varAux);
-void crearFloat(char *); /* funcion para cambiar los puntos de una variable
-int tipoElemento(char *); // funcion para obtener el tipo del elemento
+void crearFloat(char *); /* funcion para cambiar los puntos de una variable */
+int tipoElemento(char *); /* funcion para obtener el tipo del elemento
                            float a un _ para poder llamarla como cte sin nombre */
 void crearInstruccion(FILE *,char *,char *,char *, char *);
 /* Condensa la funcion fprintf con un formato ""%s\t%s\t%s\t%s\n" */
@@ -118,6 +119,7 @@ void generarAssembler();
 void imprimirVariablesASM(FILE *);
 void imprimirCabeceraASM(FILE *);
 void imprimirCabeceraCodeASM(FILE *);
+void imprimirColaCodeASM(FILE *);
 void crearValor(FILE *);
 void recorrerTercetos(FILE *);
 void crearFADD(FILE *);
@@ -128,14 +130,19 @@ void crearASIG(FILE *);
 void crearCMP(FILE *);
 void crearINPUT(FILE *);
 void crearOUTPUT(FILE *);
-char *sacarComillas(char *val, char *cadena);
-int vec[2048];
-int vecRep[2048];
+void crearRepeat(FILE *);
+void crearAuxFiltro(FILE *);
 
+char *sacarComillas(char *, char *);
+char *sacarComillaConst(char *, char*);
 int esSalto(char *);
 void crearSalto(FILE *);
 void reemplazo(char *v, char c1, char c2);
 int buscarPorValor(char *id);
+int leerIndiceTercero(char *dato);
+
+int vec[2048];
+int vecRep[2048];
 /***********************************************************************/
 
 
@@ -160,298 +167,342 @@ int buscarPorValor(char *id);
 
 %%
 
-start: archivo ; /* SIMBOLO INICIAL */
+start				:		archivo ; /* SIMBOLO INICIAL */
 
 /* DECLARACION GENERAL DE PROGRAMA
 	- DECLARACIONES Y CUERPO DE PROGRAMA
 	- CUERPO DE PROGRAMA
 */
-archivo:
-		VAR bloqdeclaracion ENDVAR bloqprograma {exportarTablas(); generarAssembler();} ;
+archivo				:		VAR bloqdeclaracion ENDVAR bloqprograma {exportarTablas(); generarAssembler();} ;
 
 /* REGLAS BLOQUE DE DECLARACIONES */
-bloqdeclaracion:
-	bloqdeclaracion declaracion ;
+bloqdeclaracion		:		bloqdeclaracion declaracion ;
+bloqdeclaracion		:		declaracion ;
 
-bloqdeclaracion:
-	declaracion ;
+declaracion			:		CORCHETE_A listatipos CORCHETE_C DOSPUNTOS CORCHETE_A listavariables CORCHETE_C PYC {insertarIDs();};
 
-declaracion:
-	CORCHETE_A listatipos CORCHETE_C DOSPUNTOS CORCHETE_A listavariables CORCHETE_C PYC {insertarIDs();};
+listatipos			:		listatipos COMA listadato	|
+							listadato					;
 
-listatipos:
-	listatipos COMA listadato	|listadato;
+listadato			:		INTEGER {sprintf(tipoid[canttipos++], "%s", "INTEGER"); }	|
+							FLOAT	{sprintf(tipoid[canttipos++], "%s", "FLOAT"); }		;
 
-listadato:
-	INTEGER {sprintf(tipoid[canttipos++], "%s", "INTEGER"); }	|
-	FLOAT	{sprintf(tipoid[canttipos++], "%s", "FLOAT"); }		;
-
-listavariables:		
-	listavariables COMA ID {strcpy(cadAux,yylval.str_val); strcpy(ids[cantIds], strtok(cadAux," ,:"));cantIds++;}	|
-	ID{strcpy(cadAux,yylval.str_val); strcpy(ids[cantIds], strtok(cadAux," ,:"));cantIds++;}						;
+listavariables		:		listavariables COMA ID {strcpy(cadAux,yylval.str_val); strcpy(ids[cantIds], strtok(cadAux," ,:"));cantIds++;}	|
+							ID{strcpy(cadAux,yylval.str_val); strcpy(ids[cantIds], strtok(cadAux," ,:"));cantIds++;}						;
 /* FIN REGLAS BLOQUE DE DECLARACIONES */
 
 /* REGLAS BLOQUE DE CUERPO DE PROGRAMA */
 
-bloqprograma:
-	bloqprograma sentencia ;
-bloqprograma:
-	sentencia ;
+bloqprograma		:		bloqprograma sentencia ;
+bloqprograma		:		sentencia ;
 
-sentencia:		constante	|
-				asignacion 	|
-				decision	|
-				bucle		|
-				leer		|
-				imprimir	|
-				filtro		; /*SACAR*/
+sentencia			:		constante	|
+							asignacion 	|
+							decision	|
+							bucle		|
+							leer		|
+							imprimir	|
+							filtro		; /*SACAR*/
 
-tiposoloid:
-	ID {strcpy(aux1, yylval.str_val);};
+tiposoloid			: 		ID {strcpy(aux1, yylval.str_val);};
 
-constante:
-	CONST tiposoloid OP_ASIG CTE_E
-	{	/*itoa(yylval.intval, valorConstante, 10);*/
-     sprintf(valorConstante, "%.2f", (double)yylval.intval);
-    } PYC
-	{	indice_constante = crearTerceto("=", aux1, valorConstante);
-		insertarConstante(aux1, "CONST_INTEGER", valorConstante);
-	}		|
-	CONST tiposoloid OP_ASIG CTE_R
-	{	gcvt(yylval.val, 10, valorConstante);} PYC
-	{	indice_constante = crearTerceto("=", aux1, valorConstante);
-		insertarConstante(aux1, "CONST_FLOAT", valorConstante);
-	}		|
-	CONST tiposoloid OP_ASIG CTE_S
-	{	strcpy(valorConstante, yylval.str_val);} PYC
-	{	indice_constante = crearTerceto("=", aux1, valorConstante);
-		insertarConstante(aux1, "CONST_STRING", valorConstante);
-	}		;
+constante			:		CONST tiposoloid OP_ASIG CTE_E
+							{	/*itoa(yylval.intval, valorConstante, 10);*/
+                sprintf(valorConstante, "%.2f", (double)yylval.intval);
+              } PYC
+							{	indice_constante = crearTerceto("=", aux1, valorConstante);
+								insertarConstante(aux1, "CONST_INTEGER", valorConstante);
+							}		|
+							CONST tiposoloid OP_ASIG CTE_R
+							{	gcvt(yylval.val, 10, valorConstante);} PYC
+							{	indice_constante = crearTerceto("=", aux1, valorConstante);
+								insertarConstante(aux1, "CONST_FLOAT", valorConstante);
+							}		|
+							CONST tiposoloid OP_ASIG CTE_S
+							{	strcpy(valorConstante, yylval.str_val);} PYC
+							{	indice_constante = crearTerceto("=", aux1, valorConstante);
+								insertarConstante(aux1, "CONST_STRING", valorConstante);
+							}		;
 
-asignacion:	
-	ID {if((idAsig1 = existeID(yylval.str_val)) != -1)
-		strcpy(aux1, yylval.str_val);
-	else
-		yyerror(" SINTAX : ID no declarado anteriormente" );}	
-		OP_ASIG tipoasig PYC {crearTerceto("=", aux1, valorConstante);};
+asignacion			:		ID
+							{	if((idAsig1 = existeID(yylval.str_val)) != -1)
+									strcpy(aux1, yylval.str_val);
+								else
+									yyerror("SINTAX ERROR: ID no declarado anteriormente");
+							}	OP_ASIG tipoasig PYC {crearTerceto("=", aux1, valorConstante);}	;
+tipoasig			:		varconstante
+							{ 	if(strcmp(tablaId[idAsig1].tipo, aux2) != 0)
+									yyerror("SINTAX ERROR: Asignacion de dos tipos disntitos");
+							}
+							|
+							ID
+							{	if((idAsig2 = existeID(yylval.str_val)) != -1) {
+									if(strcmp(tablaId[idAsig1].tipo, tablaId[idAsig2].tipo) != 0)
+										yyerror("SINTAX ERROR: Asignacion de dos tipos disntitos");
+									else
+										strcpy(valorConstante, yylval.str_val);
+								}
+								else
+									yyerror("SINTAX ERROR: ID no declarado anteriormente");
+							}		;
 
-tipoasig:		
-	varconstante
-	{ 	if(strcmp(tablaId[idAsig1].tipo, aux2) != 0)
-			yyerror("SINTAX : Asignacion de dos tipos disntitos");
-	}
-	|
-	ID
-	{	if((idAsig2 = existeID(yylval.str_val)) != -1) {
-			if(strcmp(tablaId[idAsig1].tipo, tablaId[idAsig2].tipo) != 0)
-				yyerror("SINTAX : Asignacion de dos tipos disntitos");
-			else
-				strcpy(valorConstante, yylval.str_val);
-		}
-		else
-			yyerror("SINTAX : ID no declarado anteriormente");
-	}		;
+varconstante		:	CTE_E
+                  {
+                    sprintf(valorConstante, "%0.2f", (double) yylval.intval);
+                    strcpy(aux2, "INTEGER");
+                    strcpy(cadAux, "_");
+                    crearFloat(strcat(cadAux, valorConstante));
+                    insertarConstante(cadAux, "CONST_INTEGER", valorConstante);
+                    /*toa(yylval.intval, valorConstante, 10); strcpy(aux2, "INTEGER");*/
+                  }	|
+							    CTE_R
+                  {
+                    sprintf(valorConstante, "%0.2f", (double) yylval.val);
+                    strcpy(aux2,"FLOAT");
+                    strcpy(cadAux, "_");
+                    crearFloat(strcat(cadAux, valorConstante));
+                    insertarConstante(cadAux, "CONST_FLOAT", valorConstante);
+                    /*gcvt(yylval.val, 10, valorConstante); strcpy(aux2, "FLOAT");*/
+                  };
 
-varconstante:	CTE_E
-  {
-    sprintf(valorConstante, "%0.2f", (double) yylval.intval);
-    strcpy(aux2, "INTEGER");
-    strcpy(cadAux, "_");
-    crearFloat(strcat(cadAux, valorConstante));
-    insertarConstante(cadAux, "CONST_INTEGER", valorConstante);
-    /*toa(yylval.intval, valorConstante, 10); strcpy(aux2, "INTEGER");*/
-  }	|
-	CTE_R
-  {
-    sprintf(valorConstante, "%0.2f", (double) yylval.val);
-    strcpy(aux2,"FLOAT");
-    strcpy(cadAux, "_");
-    crearFloat(strcat(cadAux, valorConstante));
-    insertarConstante(cadAux, "CONST_FLOAT", valorConstante);
-    /*gcvt(yylval.val, 10, valorConstante); strcpy(aux2, "FLOAT");*/
-  };
+decision			:		C_IF_A PARENTESIS_A condicion PARENTESIS_C LLAVE_A bloqprograma LLAVE_C
+							{	modificarTerceto(desapilar(&pilaPos), 0);
+								if(condicionDoble == 1)
+									modificarTerceto(desapilar(&pilaPos), 0);
+							}	|
+							C_IF_A PARENTESIS_A condicion PARENTESIS_C LLAVE_A bloqprograma LLAVE_C
+							{	modificarTerceto(desapilar(&pilaPos), 1);
+								if(condicionDoble == 1)
+									modificarTerceto(desapilar(&pilaPos), 1);
+								
+								indice_if = crearTerceto("JMP", "", "");
+								apilar(&pilaPos, indice_if);
+							}
+							C_IF_E LLAVE_A bloqprograma LLAVE_C	{modificarTerceto(desapilar(&pilaPos), 0);}	;
 
-decision:		
-	C_IF_A PARENTESIS_A condicion PARENTESIS_C LLAVE_A bloqprograma LLAVE_C
-	{	modificarTerceto(desapilar(&pilaPos), 0);
-	}	|
-	C_IF_A PARENTESIS_A condicion PARENTESIS_C LLAVE_A bloqprograma LLAVE_C
-	{	modificarTerceto(desapilar(&pilaPos), 1);
-		indice_if = crearTerceto("JMP", "", "");
-		apilar(&pilaPos, indice_if);
-	}
-	C_IF_E LLAVE_A bloqprograma LLAVE_C	{modificarTerceto(desapilar(&pilaPos), 0);}	;
+bucle				:		C_REPEAT_A
+							{	indice_repeat = crearTerceto(";ETQ_REPEAT", "", "");
+								apilar(&pilaRepeat, indice_repeat);
 
-bucle:		
-	C_REPEAT_A
-	{	indice_repeat = crearTerceto("ETQ_REPEAT", "", "");
-		apilar(&pilaRepeat, indice_repeat);
-	}
-	bloqprograma C_REPEAT_C PARENTESIS_A condicion PARENTESIS_C PYC
-	{
-		modificarTerceto(numeroTerceto-1, (-1)*(numeroTerceto - desapilar(&pilaRepeat) ));
-	};
+							}
+							bloqprograma C_REPEAT_C PARENTESIS_A condicion PARENTESIS_C PYC
+							{
+								modificarTerceto(numeroTerceto-1, (-1)*(numeroTerceto - desapilar(&pilaRepeat) - 1));
 
-condicion:
-	comparacion
-	{	sprintf(aux1, "[ %d ]", indice_comparacion);
-		indice_condicion = crearTerceto(opSalto, aux1, "--");
-		apilar(&pilaPos, indice_condicion);
-	}	|
-	OP_NEGACION PARENTESIS_A comparacion PARENTESIS_C
-	{	sprintf(aux1, "[ %d ]", indice_comparacion);
-		indice_condicion = crearTerceto(negarSalto(opSalto), aux1, "");
-		apilar(&pilaPos, indice_condicion);
-	}	|
-	comparacion_i OP_LOGICO_AND comparacion_d
-	{	sprintf(aux1, "[ %d ]", indice_comparacionI);
-		sprintf(aux2, "[ %d ]", indice_comparacionD);
-		indice_condicion = crearTerceto("AND", aux1, aux2);
-		sprintf(aux1, "[ %d ]", numeroTerceto);
-		indice_condicion = crearTerceto("JZ", aux1, "");
-		apilar(&pilaPos, indice_condicion);
-	}	|
-	comparacion_i OP_LOGICO_OR comparacion_d
-	{	sprintf(aux1, "[ %d ]", indice_comparacionI);
-		sprintf(aux2, "[ %d ]", indice_comparacionD);
-		indice_condicion = crearTerceto("OR", aux1, aux2);
-		sprintf(aux1, "[ %d ]", numeroTerceto);
-		indice_condicion = crearTerceto("JZ", aux1, "");
-		apilar(&pilaPos, indice_condicion);
-	}	;
+							};
 
-comparacion_i:		comparacion { indice_comparacionI = indice_comparacion; } ;
-comparacion_d:		comparacion { indice_comparacionD = indice_comparacion; } ;
+condicion			:		comparacion
+							{	sprintf(aux1, "[ %d ]", indice_comparacion);
+								indice_condicion = crearTerceto(opSalto, aux1, "--");
+								apilar(&pilaPos, indice_condicion);
+								condicionDoble = 0;
+							}	|
+							OP_NEGACION PARENTESIS_A comparacion PARENTESIS_C
+							{	sprintf(aux1, "[ %d ]", indice_comparacion);
+								indice_condicion = crearTerceto(negarSalto(opSalto), aux1, "");
+								apilar(&pilaPos, indice_condicion);
+								condicionDoble = 0;
+							}	|
+							comparacion_i OP_LOGICO_AND comparacion_d
+							{	/*sprintf(aux1, "[ %d ]", indice_comparacionI);
+								sprintf(aux2, "[ %d ]", indice_comparacionD);
 
+								indice_condicion = crearTerceto("AND", aux1, aux2);
 
-comparacion:		
-	expresion_i op_comparacion expresion_d
-	{	sprintf(aux1, "[ %d ]", indice_condicionI);
-		sprintf(aux2, "[ %d ]", indice_condicionD);
-		indice_comparacion = crearTerceto("CMP", aux1, aux2);
-	}	|
-	filtro op_comparacion expresion_d
-	{	sprintf(aux2, "[ %d ]", indice_condicionD);
-		indice_comparacion = crearTerceto("CMP", "_auxFiltro", aux2);
-	}	;
+								sprintf(aux1, "[ %d ]", numeroTerceto);
 
+								indice_condicion = crearTerceto("JZ", aux1, "");
+								apilar(&pilaPos, indice_condicion);*/
+								condicionDoble = 1;
+							}	|
+							comparacion_i 	{	modificarTerceto(indice_comparacionI, 1);
+												desapilar(&pilaPos);
+												indice_condicion = crearTerceto(negarSalto(opSalto), "RESERVADO", "--");
+												apilar(&pilaOr, indice_condicion); 
+												
+											}
+							OP_LOGICO_OR comparacion_d
+							{	/*sprintf(aux1, "[ %d ]", indice_comparacionI);
+								sprintf(aux2, "[ %d ]", indice_comparacionD);
 
-expresion_i: 		expresion { indice_condicionI = indice_expresion; };
-expresion_d:		expresion { indice_condicionD = indice_expresion; };
+								indice_condicion = crearTerceto("OR", aux1, aux2);
 
-op_comparacion:       
-	OP_MENOR {strcpy(opSalto, "JB");} 		|
-	OP_MENORIGUAL {strcpy(opSalto, "JBE");}	|
-	OP_MAYOR {strcpy(opSalto, "JA");}		|
-	OP_MAYORIGUAL {strcpy(opSalto, "JAE");}	|
-	OP_IGUAL {strcpy(opSalto, "JE");}		|
-	OP_DISTINTO	{strcpy(opSalto, "JNE");}	;
+								sprintf(aux1, "[ %d ]", numeroTerceto);
 
+								indice_condicion = crearTerceto("JZ", aux1, "");
+								apilar(&pilaPos, indice_condicion);*/
+								//printf("CREANDO TERCETO - OPSALTO: %s - NEGADO: %s\n", opSalto, negarSalto(opSalto));
+								indice_condicion = crearTerceto(negarSalto(opSalto), "RESERVADO", "--");
+								//printf("APILADO %d\n", indice_condicion);
+								apilar(&pilaOr, indice_condicion); 
+								
+								modificarTerceto(desapilar(&pilaOr), 0);
+								modificarTerceto(desapilar(&pilaOr), 0);
+								condicionDoble = 0;
+							}	;
+
+comparacion_i		:		comparacion { 	//indice_comparacionI = indice_comparacion+1;
+											//sprintf(aux1, "[ %d ]", indice_comparacionI);
+											indice_comparacionI = crearTerceto(opSalto, "RESERVADO", "--");
+											apilar(&pilaPos, indice_comparacionI);
 
 
-expresion:
-	termino	{ indice_expresion = indice_termino; }		|
-	expresion OP_SUMA termino
-	{	sprintf(aux1, "[ %d ]", indice_expresion);
-		sprintf(aux2, "[ %d ]", indice_termino);
-	indice_expresion = crearTerceto("ADD", aux1, aux2);
-	}		|
-	expresion OP_RESTA termino
-	{	sprintf(aux1, "[ %d ]", indice_expresion);
-		sprintf(aux2, "[ %d ]", indice_termino);
-	indice_expresion = crearTerceto("SUB", aux1, aux2);
-	}		;
+										} ;
+comparacion_d		:		comparacion {	//indice_comparacionD = indice_comparacion+1;
+											//sprintf(aux1, "[ %d ]", indice_comparacionI);
+											indice_comparacionD = crearTerceto(opSalto, "RESERVADO", "--");
+											apilar(&pilaPos, indice_comparacionD);
+										} ;
 
-termino:		
-	factor { indice_termino = indice_factor; }				|
-	termino OP_MUL factor
-	{
-		sprintf(aux1, "[ %d ]", indice_termino);
-		sprintf(aux2, "[ %d ]", indice_factor);
-	indice_termino = crearTerceto("MUL", aux1, aux2);
-	}	|
-	termino OP_DIV factor
-	{	sprintf(aux1, "[ %d ]", indice_termino);
-		sprintf(aux2, "[ %d ]", indice_factor);
-	indice_termino = crearTerceto("DIV", aux1, aux2);
-	}	;
 
-factor:		ID
-	{	//if(existeID(yylval.str_val))
-			indice_factor = crearTerceto(yylval.str_val,"--","--");
-		/*SINO ERROR PORQUE NO EXISTE*/
-	}				|
-	varconstante {indice_factor = crearTerceto(valorConstante, "--", "--");}	|
-	PARENTESIS_A expresion PARENTESIS_C {indice_factor = indice_expresion;}	;
+comparacion			:		expresion_i op_comparacion expresion_d
+							{	sprintf(aux1, "[ %d ]", indice_condicionI);
+								sprintf(aux2, "[ %d ]", indice_condicionD);
+
+								indice_comparacion = crearTerceto("CMP", aux1, aux2);
+							}	|
+							filtro op_comparacion expresion_d
+							{	sprintf(aux2, "[ %d ]", indice_condicionD);
+
+								crearTerceto("auxFiltro", "--", "--");
+								sprintf(aux1, "[ %d ]", numeroTerceto-1);
+								
+								indice_comparacion = crearTerceto("CMP", aux1, aux2);
+							}	;
+
+
+expresion_i			: 		expresion { indice_condicionI = indice_expresion; };
+expresion_d			:		expresion { indice_condicionD = indice_expresion; };
+
+op_comparacion      :       OP_MENOR {strcpy(opSalto, "JNB");} 		|
+							OP_MENORIGUAL {strcpy(opSalto, " JNBE");}	|
+							OP_MAYOR {strcpy(opSalto, "JNA");}		|
+							OP_MAYORIGUAL {strcpy(opSalto, "JNAE");}	|
+							OP_IGUAL {strcpy(opSalto, "JNE");}		|
+							OP_DISTINTO	{strcpy(opSalto, "JE");}	;
 
 
 
-imprimir:		PRINT CTE_S {
-		strcpy(aux1, yylval.str_val);
-		indice_out = crearTerceto("output", aux1, "--");
-		strcpy(aux1, "_");
-		insertarConstante(strcat(aux1, yylval.str_val), "CONST_STRING", yylval.str_val);
-	}	PYC	|
-	PRINT ID {
-		//if(existeID(yylval.str_val))
-			strcpy(aux1, yylval.str_val);
-			indice_out = crearTerceto("output", aux1, "--");
-		/*SINO ERROR PORQUE NO EXISTE*/
-	}	PYC	;
-leer:
-	READ ID	{
-	//if(existeID(yylval.str_val))
-		strcpy(aux1, yylval.str_val);
-		indice_in = crearTerceto("input", aux1, "--");
-	/*SINO ERROR PORQUE NO EXISTE*/
-	}	PYC	;
+expresion			:		termino	{ indice_expresion = indice_termino; }		|
+							expresion OP_SUMA termino
+							{	sprintf(aux1, "[ %d ]", indice_expresion);
+								sprintf(aux2, "[ %d ]", indice_termino);
 
-filtro:
-	C_FILTER PARENTESIS_A condfiltro COMA CORCHETE_A listvarfiltro CORCHETE_C PARENTESIS_C
-	{	while(!pila_vacia(&pilaFiltro))
-		{
-			modificarTerceto(desapilar(&pilaFiltro), 0);
-		}
-	}	;
+								indice_expresion = crearTerceto("ADD", aux1, aux2);
+							}		|
+							expresion OP_RESTA termino
+							{	sprintf(aux1, "[ %d ]", indice_expresion);
+								sprintf(aux2, "[ %d ]", indice_termino);
 
-condfiltro:	
-	C_FILTER_REFENTEROS op_comparacion expresion ;
+								indice_expresion = crearTerceto("SUB", aux1, aux2);
+							}		;
+
+termino				:		factor { indice_termino = indice_factor; }				|
+							termino OP_MUL factor
+							{
+								sprintf(aux1, "[ %d ]", indice_termino);
+								sprintf(aux2, "[ %d ]", indice_factor);
+
+								indice_termino = crearTerceto("MUL", aux1, aux2);
+							}	|
+							termino OP_DIV factor
+							{	sprintf(aux1, "[ %d ]", indice_termino);
+								sprintf(aux2, "[ %d ]", indice_factor);
+
+								indice_termino = crearTerceto("DIV", aux1, aux2);
+							}	;
+
+factor				:		ID
+							{	if(existeID(yylval.str_val) != -1){
+									indice_factor = crearTerceto(yylval.str_val,"--","--");
+								} else { /*SINO ERROR PORQUE NO EXISTE*/
+									yyerror("SINTAX ERROR: ID no declarado anteriormente");
+								}
+							}				|
+							varconstante {indice_factor = crearTerceto(valorConstante, "--", "--");}	|
+							PARENTESIS_A expresion PARENTESIS_C {indice_factor = indice_expresion;}	;
+
+
+
+imprimir			:		PRINT CTE_S {
+								strcpy(aux1, yylval.str_val);
+								indice_out = crearTerceto("output", aux1, "--");
+								strcpy(aux1, "_");
+								insertarConstante(strcat(aux1, yylval.str_val), "CONST_STRING", yylval.str_val);
+							}	PYC	|
+							PRINT ID {
+								if(existeID(yylval.str_val) != -1) {
+									strcpy(aux1, yylval.str_val);
+									indice_out = crearTerceto("output", aux1, "--");
+								} else {/*SINO ERROR PORQUE NO EXISTE*/
+									yyerror("SINTAX ERROR: ID no declarado anteriormente");
+								}
+							}	PYC	;
+leer				:		READ ID	{
+								if(existeID(yylval.str_val) != -1) {
+									strcpy(aux1, yylval.str_val);
+									indice_in = crearTerceto("input", aux1, "--");
+								} else {/*SINO ERROR PORQUE NO EXISTE*/
+									yyerror("SINTAX ERROR: ID no declarado anteriormente");
+								}
+							}	PYC	;
+
+filtro				:		C_FILTER PARENTESIS_A condfiltro COMA CORCHETE_A listvarfiltro CORCHETE_C PARENTESIS_C
+							{	while(!pila_vacia(&pilaFiltro))
+								{
+									modificarTerceto(desapilar(&pilaFiltro), 0);
+								}
+
+							}	;
+
+condfiltro			:		C_FILTER_REFENTEROS op_comparacion expresion ;
 /*							C_FILTER_REFENTEROS op_comparacion expresion_i OP_LOGICO_AND C_FILTER_REFENTEROS op_comparacion expresion_d |
 							C_FILTER_REFENTEROS op_comparacion expresion_i OP_LOGICO_OR C_FILTER_REFENTEROS op_comparacion expresion_d ;
 */
+listvarfiltro		:		listvarfiltro COMA ID
+							{	if(existeID(yylval.str_val) != -1) {
+									strcpy(aux1, yylval.str_val);
+									indice_filtro = crearTerceto(aux1, "--", "--");
 
+									sprintf(aux1, "[ %d ]", indice_expresion);
+									sprintf(aux2, "[ %d ]", numeroTerceto-1);
 
-listvarfiltro:
-		listvarfiltro COMA ID
-	{	//if(existeID(yylval.str_val))
-		strcpy(aux1, yylval.str_val);
-		indice_filtro = crearTerceto(aux1, "--", "--");
-		sprintf(aux1, "[ %d ]", indice_expresion);
-		sprintf(aux2, "[ %d ]", numeroTerceto-1);
-		crearTerceto("CMP", aux1, aux2);
-		sprintf(aux1, "[ %d ]", numeroTerceto+3);
-		crearTerceto(negarSalto(opSalto), aux1, "");
-		sprintf(aux1, "[ %d ]", numeroTerceto-3);
-		crearTerceto("=", "_auxFiltro", aux1);
-		crearTerceto("JMP", "", "");
-		apilar(&pilaFiltro, numeroTerceto-1);
-		/*SINO ERROR PORQUE NO EXISTE*/
-	}	|
-	ID
-	{	//if(existeID(yylval.str_val))
-		strcpy(aux1, yylval.str_val);
-		indice_filtro = crearTerceto(aux1, "--", "--");
-		sprintf(aux1, "[ %d ]", indice_expresion);
-		sprintf(aux2, "[ %d ]", numeroTerceto-1);
-		crearTerceto("CMP", aux1, aux2);
-		sprintf(aux1, "[ %d ]", numeroTerceto+3);
-		crearTerceto(negarSalto(opSalto), aux1, "");
-		sprintf(aux1, "[ %d ]", numeroTerceto-3);
-		crearTerceto("=", "_auxFiltro", aux1);
-		crearTerceto("JMP", "", "");
-		apilar(&pilaFiltro, numeroTerceto-1);
-		/*SINO ERROR PORQUE NO EXISTE*/
-	}	;
+									crearTerceto("CMP", aux2, aux1);
+
+									sprintf(aux1, "[ %d ]", numeroTerceto+3);
+									crearTerceto(negarSalto(opSalto), aux1, "");
+
+									sprintf(aux1, "[ %d ]", numeroTerceto-3);
+
+									crearTerceto("=", "auxFiltro", aux1);
+									crearTerceto("JMP", "", "");
+									
+									apilar(&pilaFiltro, numeroTerceto-1);
+								} else {/*SINO ERROR PORQUE NO EXISTE*/
+									yyerror("SINTAX ERROR: ID no declarado anteriormente");
+								}
+							}	|
+							ID
+							{	if(existeID(yylval.str_val) != -1) {
+									strcpy(aux1, yylval.str_val);
+									indice_filtro = crearTerceto(aux1, "--", "--");
+
+									sprintf(aux1, "[ %d ]", indice_expresion);
+									sprintf(aux2, "[ %d ]", numeroTerceto-1);
+									crearTerceto("CMP", aux2, aux1);
+
+									sprintf(aux1, "[ %d ]", numeroTerceto+3);
+									crearTerceto(negarSalto(opSalto), aux1, "");
+
+									sprintf(aux1, "[ %d ]", numeroTerceto-3);
+
+									crearTerceto("=", "auxFiltro", aux1);
+									crearTerceto("JMP", "", "");
+									apilar(&pilaFiltro, numeroTerceto-1);
+								} else {/*SINO ERROR PORQUE NO EXISTE*/
+									yyerror("SINTAX ERROR: ID no declarado anteriormente");
+								}
+							}	;
 
 
 
@@ -473,6 +524,7 @@ int main(int argc,char *argv[]){
 	crearPila(&pilaPos);
 	crearPila(&pilaRepeat);
 	crearPila(&pilaFiltro);
+	crearPila(&pilaOr);
 	/* ****************************************** */
 
 
@@ -481,8 +533,7 @@ int main(int argc,char *argv[]){
 	fclose(yyin);
 
 
-  generarAssembler();
-	return 0;
+ 	return 0;
 }
 
 int yyerror(char * mensaje){
@@ -523,37 +574,30 @@ void mostrarTerceto()
 
 char* negarSalto(char* operadorSalto)
 {
-	if (strcmp(operadorSalto, "JE") == 0) // IGUAL
+	
+	if (strcmp(operadorSalto, "JNB") == 0) // 
 	{
-		return "JEN"; // DISTINTO
+		return "JNAE"; // 
 	}
-	if (strcmp(operadorSalto, "JNE") == 0) // DISTINTO
+	if (strcmp(operadorSalto, "JNBE") == 0) // 
 	{
-		return "JE"; //IGUAL
+		return "JNA"; //
 	}
-	if (strcmp(operadorSalto, "JB") == 0) // MENOR
+	if (strcmp(operadorSalto, "JNA") == 0) // 
 	{
-		return "JAE"; // MAYOR O IGUAL
+		return "JNBE"; // 
 	}
-	if (strcmp(operadorSalto, "JA") == 0) //MAYOR
+	if (strcmp(operadorSalto, "JNAE") == 0) //
 	{
-		return "JBE"; //MENOR O IGUAL
+		return "JNB"; //
 	}
-	if (strcmp(operadorSalto, "JBE") == 0) //MENOR O IGUAL
+	if (strcmp(operadorSalto, "JNE") == 0) //
 	{
-		return "JA";	//MAYOR
+		return "JE";	//
 	}
-	if (strcmp(operadorSalto, "JAE") == 0) //MAYOR O IGUAL
+	if (strcmp(operadorSalto, "JE") == 0) //
 	{
-		return "JB"; //MENOR
-	}
-	if (strcmp(operadorSalto, "JZ") == 0) //
-	{
-		return "JNZ";
-	}
-	if (strcmp(operadorSalto, "JNZ") == 0)
-	{
-		return "JZ";
+		return "JNE"; //
 	}
 }
 
@@ -587,17 +631,23 @@ void insertarConstante(char* nombre, char* tipo, char* valor)
 {
 	char auxLongitud[31];
 
+	//reemplazo(nombre, (char)34, '_');
+	sacarComillaConst(nombre, nombre);
+	reemplazo(nombre, ' ', '_');
+	//printf("%s", nombre);
+
 	if(existeID(nombre) == -1) {
 		strcpy(tablaId[numeroId].nombre, nombre);
 		strcpy(tablaId[numeroId].tipo, tipo);
 		strcpy(tablaId[numeroId].valor, valor);
-		if(strcmp(tipo, "STRING") == 0){
+		if(strcmp(tipo, "CONST_STRING") == 0){
 			sprintf(tablaId[numeroId].longitud, "%d", strlen(tablaId[numeroId].valor) - 2);
 		}
 		else
 			strcpy(tablaId[numeroId].longitud, "");
 
 		numeroId++;
+
 	}
 	/* SINO ERROR PORQUE YA EXISTE*/
 
@@ -634,11 +684,17 @@ void exportarTablas()
 
 	fprintf(ts, "NOMBRE\t\t\t\tTIPO\t\t\t\tVALOR\t\t\tLONGITUD\n");
 
+	strcpy(tablaId[numeroId].nombre, "auxFiltro");
+	strcpy(tablaId[numeroId].tipo, "INTEGER");
+	strcpy(tablaId[numeroId].valor, "?");
+	strcpy(tablaId[numeroId].longitud, "");
+	numeroId++;
+	
 	for(i = 0; i < numeroId; i++) {
 		fprintf(ts, "%-30s%-30s%-30s%s\n", tablaId[i].nombre, tablaId[i].tipo, tablaId[i].valor, tablaId[i].longitud);
 	}
 
-
+	
 	for(i = 0; i < numeroTerceto; i++) {
 		fprintf(intermedia, "|  %d  | ( %s, %s, %s )\n", tablaTerceto[i].indice, tablaTerceto[i].dato1, tablaTerceto[i].dato2, tablaTerceto[i].dato3);
 	}
@@ -664,11 +720,12 @@ void generarAssembler() {
 	recorrerTercetos(codAssembler);
 
 
-
+	imprimirColaCodeASM(codAssembler);
 	fclose(codAssembler);
 }
 
 void imprimirCabeceraASM(FILE *arch) {
+	/***** LISTO *****/
 	fprintf(arch, "include macros2.asm\n");
 	fprintf(arch, "include number.asm\n\n");
 	fprintf(arch, ".MODEL LARGE\n");
@@ -680,15 +737,24 @@ void imprimirCabeceraASM(FILE *arch) {
 
 void imprimirVariablesASM(FILE *arch) {
   int i;
-	char subfijo[50];
+  char subfijo[50];
   char cadena[20];
+  char buffer[20];
+  char buffer2[20];
 
 	for(i = 0; i < numeroId; i++) {
 		strcpy(subfijo, "_");
 
-		fprintf(arch, "\t%s\t%s\t%s", strcat(subfijo, ((strstr(tablaId[i].tipo, "STRING")!= NULL )?sacarComillas(tablaId[i].valor, cadena):(tablaId[i].nombre))), 
-                                        (strstr(tablaId[i].tipo, "STRING")!= NULL ? "db" : "dd"), tablaId[i].valor);
-		fprintf(arch, "%s\n" , (strstr(tablaId[i].tipo, "STRING")!= NULL ? ", \"$\"": ""));
+		fprintf(arch, "\t%s\t%s\t%s", strcat(subfijo, ((strstr(tablaId[i].tipo, "CONST_STRING")!= NULL )?sacarComillas(tablaId[i].valor, cadena):(tablaId[i].nombre))), 
+                                        (strstr(tablaId[i].tipo, "CONST_STRING")!= NULL ? "db" : "dd"), tablaId[i].valor);
+
+		strcpy(buffer, ", ");
+		fprintf(arch, "%s\n" , (strstr(tablaId[i].tipo, "CONST_STRING")!= NULL ? strcat(buffer, tablaId[i].longitud) : ""));
+	}
+	
+	for(i = 0; i < numeroTerceto; i++) {
+		sprintf(subfijo, "@aux%d", i);
+		fprintf(arch, "\t%s\tdd\t?\n", subfijo);
 	}
 }
 
@@ -703,88 +769,122 @@ char *sacarComillas(char *val, char *cadena){
 }
 
 void imprimirCabeceraCodeASM(FILE *arch) {
+	/***** LISTO *****/
 	fprintf(arch, "\n.CODE\n");
 	fprintf(arch, "START:\n");
 	fprintf(arch, "; ******* CODIGO PERMANENTE ********\n");
-	fprintf(arch, "\tmov AX,@DATA\n");
-	fprintf(arch, "\tmov DS,AX\n");
+	fprintf(arch, "\t\tmov AX,@DATA\n");
+	fprintf(arch, "\t\tmov DS,AX\n");
+	fprintf(arch, "\t\tmov es,ax\n");
 	fprintf(arch, "; **********************************\n");
-	fprintf(arch, "\tmov es,ax\n");
 
 }
 void recorrerTercetos(FILE *arch) {
-	int w=0;
-		for(w=0;w<2048;w++){
-			vec[w]=-1;
-		}
-	int j=0;
-	for(j=0;j<2048;j++){
-		vecRep[j]=-1;
-	}
-	for(j=0;j<2048;j++){
-		if(strcmp(tablaTerceto[j].dato1,"ETQ_REPEAT")==0){
-			fprintf(arch,"ETQ_REPEAT_%d:\n",j);
-			vec[j]=-1;
-			vecRep[j] = j;
-	}}
-			
-	// RECORRER LOS TERCETOS
+	
+	/***** 
+		FALTA:
+			- AND
+			- OR
+			- VER SALTOS
+			- REPEAT
+
+	*****/
 	for(indiceTerceto = 0; indiceTerceto < numeroTerceto; indiceTerceto++)
 	{
-		if(vec[indiceTerceto]!=-1){
-			fprintf(arch,"ETQ_%d:\n",indiceTerceto);
-		}
-		if(vecRep[indiceTerceto]!=-1){
-			fprintf(arch,"ETQ_REPEAT_%d:\n",indiceTerceto);
+		
+		
+	
+		if(((strcmp("=", tablaTerceto[indiceTerceto].dato1) == 0) && (tipoElemento(tablaTerceto[indiceTerceto].dato2) < 4)) && strcmp(tablaTerceto[indiceTerceto].dato2, "auxFiltro") != 0) { // ES UNA CONSTANTe
+			printf("SALTER CONSTANTE: %d , %s , %s , %s\n", tablaTerceto[indiceTerceto].indice, tablaTerceto[indiceTerceto].dato1, tablaTerceto[indiceTerceto].dato2, tablaTerceto[indiceTerceto].dato3);
+			continue;
 		}
 		
+		fprintf(arch, "ETQ_%d:\n", tablaTerceto[indiceTerceto]);
+		
+		if(strcmp(tablaTerceto[indiceTerceto].dato2, "auxFiltro") == 0){
+			
+			crearAuxFiltro(arch);
+			continue;
+		}
 		
 		if(strcmp(tablaTerceto[indiceTerceto].dato2, "--") == 0 && strcmp(tablaTerceto[indiceTerceto].dato3, "--") == 0)
 		{
-		  crearValor(arch);
+			printf("CREAR VALOR - %d\n", indiceTerceto);
+			crearValor(arch);
+			continue;
 
 		}
 		if(strcmp(tablaTerceto[indiceTerceto].dato1, "ADD") == 0)
-	  {
-      crearFADD(arch);
+		{
+			printf("CREAR ADD - %d\n", indiceTerceto);
+			crearFADD(arch);
+			continue;
 		}
 
 		if(strcmp(tablaTerceto[indiceTerceto].dato1, "SUB") == 0)
 		{
-		  crearFSUB(arch);
+			printf("CREAR SUB - %d\n", indiceTerceto);
+			crearFSUB(arch);
+			continue;
 		}
 
-		{
-		if(strcmp(tablaTerceto[indiceTerceto].dato1, "MUL") == 0)
-		  crearFMUL(arch);
+		
+		if(strcmp(tablaTerceto[indiceTerceto].dato1, "MUL") == 0){
+			printf("CREAR MUL - %d\n", indiceTerceto);
+			crearFMUL(arch);
+			continue;
 		}
 
 		if(strcmp(tablaTerceto[indiceTerceto].dato1, "DIV") == 0)
 		{
-		  crearFDIV(arch);
+			printf("CREAR DIV - %d\n", indiceTerceto);
+			crearFDIV(arch);
+			continue;
 		}
 				if(esSalto(tablaTerceto[indiceTerceto].dato1) == 1) {
 			crearSalto(arch);
 		}
+
+		if(strcmp(tablaTerceto[indiceTerceto].dato1, "=") == 0){
+			printf("CREAR ASIG - %d\n", indiceTerceto);
+			crearASIG(arch);
+			continue;
+		}
+
+
+		if(strcmp(tablaTerceto[indiceTerceto].dato1, "CMP") == 0){
+			printf("CREAR CMP - %d\n", indiceTerceto);
+			crearCMP(arch);
+			continue;
+		}
+			
+		if(esSalto(tablaTerceto[indiceTerceto].dato1) == 1) {
+			printf("CREAR SALTO - %d\n", indiceTerceto);
+			crearSalto(arch);
+			continue;
+		}
 		
 		if(strcmp(tablaTerceto[indiceTerceto].dato1, "input") == 0) {
+			printf("CREAR INPUT - %d\n", indiceTerceto);
 			crearINPUT(arch);
+			continue;
 		}
 		if(strcmp(tablaTerceto[indiceTerceto].dato1, "output") == 0) {
+			printf("CREAR OUTPUT - %d\n", indiceTerceto);
 			crearOUTPUT(arch);
+			continue;
 		}
-
-    if(strcmp(tablaTerceto[indiceTerceto].dato1, "=") == 0){
-      crearASIG(arch);
-    }
-
-
-    if(strcmp(tablaTerceto[indiceTerceto].dato1, "CMP") == 0){
-      crearCMP(arch);
-    }
-
+		
+		if(strcmp(tablaTerceto[indiceTerceto].dato1, ";ETQ_REPEAT") == 0) {
+			printf("CREAR REPEAT - %d\n", indiceTerceto);
+			crearRepeat(arch);
+			continue;
+		}
+		
 	}
-	
+
+	fprintf(arch, "ETQ_%d:\n", indiceTerceto);
+
 	fprintf(arch,"mov ah,4ch\n" );
     fprintf(arch,"mov al,0\n" );
     fprintf(arch,"int 21h\n" );
@@ -813,17 +913,82 @@ void recorrerTercetos(FILE *arch) {
 	fprintf(arch,"\nCOPIAR ENDP\n");
 	fprintf(arch,"\nEND START\n");
 	fclose(arch);
-	
-	
-	
+
+
+
 }
 
-void crearValor(FILE *pf)
+void imprimirColaCodeASM(FILE *arch) {
+	
+	/***** LISTO *****/
+	fprintf(arch, "ETQ_%d:\n", indiceTerceto);
+	fprintf(arch, "\t\tmov ax, 4C00h\n");
+	fprintf(arch, "\t\tint 21h\n");
+	fprintf(arch, "END START");
+}
+
+void crearValor(FILE *arch)
 {
-	char buffer[20];
-	char op[10] = "FLD ";
- 
-    strcpy(underscore, "_");
+	/***** LISTO *****/
+	char buffer[50] = "_";
+	char p[10] = "FLD ";
+	
+	//printf("\t\ttipoElemento2: %d | VALOR: %s - tipoElemento3: %d | VALOR: %s\n", tipoElemento(tablaTerceto[indiceTerceto].dato2), tablaTerceto[indiceTerceto].dato2, tipoElemento(tablaTerceto[indiceTerceto].dato3), tablaTerceto[indiceTerceto].dato3);
+	//printf("\t\tTercerto: %d - %s - %s - %s", tablaTerceto[indiceTerceto].indice, tablaTerceto[indiceTerceto].dato1, tablaTerceto[indiceTerceto].dato2, tablaTerceto[indiceTerceto].dato3);
+	
+	if(tablaTerceto[indiceTerceto].dato1[0] >= 'A' && tablaTerceto[indiceTerceto].dato1[0] <= 'z') {
+		crearInstruccion(arch, "\t", "FLD", strcat(buffer, tablaId[existeID(tablaTerceto[indiceTerceto].dato1)].nombre), "");
+		sprintf(buffer, "@aux%d", indiceTerceto);
+		crearInstruccion(arch, "\t", "FSTP", buffer, "");
+		
+	} else {
+		crearInstruccion(arch, "\t", "FLD", strcat(buffer, tablaId[buscarPorValor(tablaTerceto[indiceTerceto].dato1)].nombre), "");
+		sprintf(buffer, "@aux%d", indiceTerceto);
+		crearInstruccion(arch, "\t", "FSTP", buffer, "");
+	}
+	
+  /*int tipo = tipoElemento(tercetoArchivo.dato1);
+	if(tipo == 1)
+	{
+		strcpy(operacion, "FILD");
+		strcpy(cteAux, "_");
+		strcat(cteAux, tercetoArchivo.dato1);
+		crearInstruccion(pf, "\t", "FILD", cteAux, "");
+		strcpy(aux, "@aux");
+		strcat(aux, itoa(tercetoArchivo.indice, buffer, 10));
+		strcpy(tercetoLeido[tercetoArchivo.indice].aux, aux);
+		strcat(aux, " ");
+	}
+		crearInstruccion(pf, "\t", "FISTP", aux, "");
+	{
+	if(tipo == 4)
+		strcpy(operacion, "FILD");
+		crearInstruccion(pf, "\t", "FILD", tercetoArchivo.dato1, "");
+		strcpy(aux, "@aux");
+		strcat(aux, itoa(tercetoArchivo.indice, buffer, 10));
+		strcat(aux, " ");
+		strcpy(tercetoLeido[tercetoArchivo.indice].aux, aux);
+		crearInstruccion(pf, "\t", "FISTP", aux, "");
+	}
+	if(tipo == 3){
+	}
+		return;
+	if(tipo == 2)
+	{
+		strcpy(operacion, "FLD ");
+		strcpy(cteAux, "_");
+		crearFloat(tercetoArchivo.dato1);
+		crearInstruccion(pf, "\t", operacion, cteAux, "");
+		strcat(cteAux, tercetoArchivo.dato1);
+		strcpy(aux, "@aux");
+		strcat(aux, itoa(tercetoArchivo.indice, buffer, 10));
+		strcpy(tercetoLeido[tercetoArchivo.indice].aux, aux);
+		strcat(aux, " ");
+	}
+		crearInstruccion(pf, "\t", "FSTP", aux, "");
+	if(tipo == 5)
+	{*/
+    /*strcpy(underscore, "__");
     strcpy(cteAux, tablaTerceto[indiceTerceto].dato1);
     crearFloat(cteAux);
     strcat(underscore, cteAux);
@@ -832,7 +997,7 @@ void crearValor(FILE *pf)
     strcat(aux, itoa(tablaTerceto[indiceTerceto].indice, buffer, 10));
     strcpy(tercetoLeido[tablaTerceto[indiceTerceto].indice].aux, aux);
     crearInstruccion(pf, "\t", "FSTP", aux, "");
-	//}
+	//}*/
 }
 
 void crearFloat(char *valor){
@@ -846,7 +1011,19 @@ void crearFloat(char *valor){
 
 void crearFADD(FILE *pf)
 {
-	char *cad;
+	/***** LISTO *****/
+	
+	char subfijo[50];
+	sprintf(subfijo, "@aux%d", leerIndiceTercero(tablaTerceto[indiceTerceto].dato2));
+	crearInstruccion(pf, "\t", "FLD", subfijo, "");
+	sprintf(subfijo, "@aux%d", leerIndiceTercero(tablaTerceto[indiceTerceto].dato3));
+	crearInstruccion(pf, "\t", "FLD", subfijo, "");
+	crearInstruccion(pf, "\t", "FADD", "", "");
+	sprintf(subfijo, "@aux%d", tablaTerceto[indiceTerceto].indice);
+	crearInstruccion(pf, "\t", "FSTP", subfijo, "");
+	crearInstruccion(pf, "\t", "FFREE", "", "");
+	
+	/*char *cad;
 	char buffer[20];
 	int i;
 	cad = strchr(tablaTerceto[indiceTerceto].dato2,'[');
@@ -859,12 +1036,23 @@ void crearFADD(FILE *pf)
 	strcpy(aux, "@aux");
 	strcat(aux, itoa(tablaTerceto[indiceTerceto].indice, buffer, 10));
 	strcpy(tercetoLeido[tablaTerceto[indiceTerceto].indice].aux, aux);
-	crearInstruccion(pf, "\t", "FSTP", aux, "");
+	crearInstruccion(pf, "\t", "FSTP", aux, "");*/
 }
 
 void crearFSUB(FILE *pf)
 {
-	char buffer[20];
+	
+	/***** LISTO *****/
+	char subfijo[50];
+	
+	sprintf(subfijo, "@aux%d", leerIndiceTercero(tablaTerceto[indiceTerceto].dato2));
+	crearInstruccion(pf, "\t", "FLD", subfijo, "");
+	sprintf(subfijo, "@aux%d", leerIndiceTercero(tablaTerceto[indiceTerceto].dato3));
+	crearInstruccion(pf, "\t", "FSUB", subfijo, "");
+	sprintf(subfijo, "@aux%d", tablaTerceto[indiceTerceto].indice);
+	crearInstruccion(pf, "\t", "FSTP", subfijo, "");
+	
+	/*char buffer[20];
 	char *cad;
 	int i;
 	cad = strchr(tablaTerceto[indiceTerceto].dato2,'[');
@@ -876,12 +1064,22 @@ void crearFSUB(FILE *pf)
 	strcpy(aux, "@aux");
 	strcat(aux, itoa(tablaTerceto[indiceTerceto].indice, buffer, 10));
 	strcpy(tercetoLeido[tablaTerceto[indiceTerceto].indice].aux, aux);
-	crearInstruccion(pf, "\t", "FSTP", aux, "");
+	crearInstruccion(pf, "\t", "FSTP", aux, "");*/
 }
 
 void crearFMUL(FILE *pf)
 {
-	char buffer[20];
+	/***** LISTO *****/
+	char subfijo[50];
+	
+	sprintf(subfijo, "@aux%d", leerIndiceTercero(tablaTerceto[indiceTerceto].dato2));
+	crearInstruccion(pf, "\t", "FLD", subfijo, "");
+	sprintf(subfijo, "@aux%d", leerIndiceTercero(tablaTerceto[indiceTerceto].dato3));
+	crearInstruccion(pf, "\t", "FMUL", subfijo, "");
+	sprintf(subfijo, "@aux%d", tablaTerceto[indiceTerceto].indice);
+	crearInstruccion(pf, "\t", "FSTP", subfijo, "");
+	
+	/*char buffer[20];
 	char *cad;
 	int i;
 	cad = strchr(tablaTerceto[indiceTerceto].dato2,'[');
@@ -893,12 +1091,21 @@ void crearFMUL(FILE *pf)
 	strcpy(aux, "@aux");
 	strcat(aux, itoa(tablaTerceto[indiceTerceto].indice, buffer, 10));
 	strcpy(tercetoLeido[tablaTerceto[indiceTerceto].indice].aux, aux);
-  crearInstruccion(pf, "\t", "FSTP", aux, "");
+	crearInstruccion(pf, "\t", "FSTP", aux, "");*/
 }
 
 void crearFDIV(FILE *pf)
 {
-	char buffer[20];
+	/***** LISTO *****/
+	char subfijo[50];
+	sprintf(subfijo, "@aux%d", leerIndiceTercero(tablaTerceto[indiceTerceto].dato2));
+	crearInstruccion(pf, "\t", "FLD", subfijo, "");
+	sprintf(subfijo, "@aux%d", leerIndiceTercero(tablaTerceto[indiceTerceto].dato3));
+	crearInstruccion(pf, "\t", "FDIV", subfijo, "");
+	sprintf(subfijo, "@aux%d", tablaTerceto[indiceTerceto].indice);
+	crearInstruccion(pf, "\t", "FSTP", subfijo, "");
+	
+	/*char buffer[20];
 	char *cad;
 	int i;
 	cad = strchr(tablaTerceto[indiceTerceto].dato2,'[');
@@ -910,26 +1117,44 @@ void crearFDIV(FILE *pf)
 	strcpy(aux, "@aux");
 	strcat(aux, itoa(tablaTerceto[indiceTerceto].indice, buffer, 10));
 	strcpy(tercetoLeido[tablaTerceto[indiceTerceto].indice].aux, aux);
-  crearInstruccion(pf, "\t", "FSTP", aux, "");
+  crearInstruccion(pf, "\t", "FSTP", aux, "");*/
 }
 
-void crearASIG(FILE *pf)
+void crearASIG(FILE *arch)
 {
-	char buffer[20];
-  char op[10] = "FLD ";
-  if( *(tablaTerceto[indiceTerceto].dato3) == '[' ){
+	/***** LISTO *****/
+	char buffer[50] = "_";
+	char p[10] = "FLD ";
+	
+	//printf("\t\ttipoElemento2: %d | VALOR: %s - tipoElemento3: %d | VALOR: %s\n", tipoElemento(tablaTerceto[indiceTerceto].dato2), tablaTerceto[indiceTerceto].dato2, tipoElemento(tablaTerceto[indiceTerceto].dato3), tablaTerceto[indiceTerceto].dato3);
+	//printf("\t\tTercerto: %d - %s - %s - %s", tablaTerceto[indiceTerceto].indice, tablaTerceto[indiceTerceto].dato1, tablaTerceto[indiceTerceto].dato2, tablaTerceto[indiceTerceto].dato3);
+	
+	if(tablaTerceto[indiceTerceto].dato3[0] >= 'A' && tablaTerceto[indiceTerceto].dato3[0] <= 'z') {
+		crearInstruccion(arch, "\t", "FLD", strcat(buffer, tablaId[existeID(tablaTerceto[indiceTerceto].dato3)].nombre), "");
+		strcpy(buffer, "_");
+		crearInstruccion(arch, "\t", "FSTP", strcat(buffer, tablaTerceto[indiceTerceto].dato2), "");
+		
+	} else {
+		crearInstruccion(arch, "\t", "FLD", strcat(buffer, tablaId[buscarPorValor(tablaTerceto[indiceTerceto].dato3)].nombre), "");
+		strcpy(buffer, "_");
+		crearInstruccion(arch, "\t", "FSTP", strcat(buffer, tablaTerceto[indiceTerceto].dato2), "");
+	}
+
+  /*if( *(tablaTerceto[indiceTerceto].dato3) == '[' ){
     strcpy(cteAux, tercetoLeido[atoi((tablaTerceto[indiceTerceto].dato3)+2)].aux);
     crearInstruccion(pf, "\t", op, cteAux, "");
     crearInstruccion(pf, "\t", "FSTP", tablaTerceto[indiceTerceto].dato2, "");
+	printf("\t\tASIG1\n");
   }
   if( tipoElemento(tablaTerceto[indiceTerceto].dato3) == 2 || tipoElemento(tablaTerceto[indiceTerceto].dato3) == 1){
-    strcpy(cteAux, "_");
+    strcpy(cteAux, "__");
     strcat(cteAux, tablaTerceto[indiceTerceto].dato3);
     crearFloat(cteAux);
     crearInstruccion(pf, "\t", "FLD ", cteAux, "");
-    strcpy(cteAux, "_");
+    strcpy(cteAux, "__");
     strcat(cteAux, tablaTerceto[indiceTerceto].dato2);
     crearInstruccion(pf, "\t", "FSTP", cteAux, "");
+	printf("\t\tASIG2\n");
   }
   if( tipoElemento(tablaTerceto[indiceTerceto].dato3) == 5 || tipoElemento(tablaTerceto[indiceTerceto].dato3) == 4){
     strcpy(cteAux, "_");
@@ -938,38 +1163,67 @@ void crearASIG(FILE *pf)
     strcpy(cteAux, "_");
     strcat(cteAux, tablaTerceto[indiceTerceto].dato2);
     crearInstruccion(pf, "\t", "FSTP", cteAux, "");
+	printf("\t\tASIG3\n");
   }
+  printf("\t\tASIG-1\n");
+*/
+}
 
+void crearAuxFiltro(FILE *arch){
+
+	char buffer[50];
+	char p[10] = "FLD ";
+	
+	sprintf(buffer, "@aux%d", leerIndiceTercero(tablaTerceto[indiceTerceto].dato3));
+	
+	crearInstruccion(arch, "\t", "FLD", buffer, "");
+	strcpy(buffer, "_");
+	crearInstruccion(arch, "\t", "FSTP", strcat(buffer, tablaTerceto[indiceTerceto].dato2), "");
 }
 
 void crearCMP(FILE *pf)
 {
-  char op1[50];
-  if(*(tablaTerceto[indiceTerceto].dato2) == '['){
-    strcpy(op1, tercetoLeido[atoi(tablaTerceto[indiceTerceto].dato2+1)].aux);
-    crearInstruccion(pf, "\t", "FLD ", op1, "");
-  } else
+	/***** LISTO *****/
+	char subfijo[50];
+	
+	sprintf(subfijo, "@aux%d", leerIndiceTercero(tablaTerceto[indiceTerceto].dato2));
+	crearInstruccion(pf, "\t", "FLD", subfijo, "");
+	sprintf(subfijo, "@aux%d", leerIndiceTercero(tablaTerceto[indiceTerceto].dato3));
+	crearInstruccion(pf, "\t", "FCOMP", subfijo, "");
+	crearInstruccion(pf, "\t", "FSTSW", "ax", "");
+	crearInstruccion(pf, "\t", "SAHF", "", "");
+	
+	printf("FIN CMP\n");
+	/*if(*(tablaTerceto[indiceTerceto].dato2) == '['){
+		strcpy(op1, tercetoLeido[atoi(tablaTerceto[indiceTerceto].dato2+1)].aux);
+		crearInstruccion(pf, "\t", "FLD ", op1, "");
+	} else
     if(tipoElemento(tablaTerceto[indiceTerceto].dato2) == 1 || tipoElemento(tablaTerceto[indiceTerceto].dato2) == 2 ||
         tipoElemento(tablaTerceto[indiceTerceto].dato2) == 4 || tipoElemento(tablaTerceto[indiceTerceto].dato2) == 5 ){
-          strcpy(op1, "_");
-          strcat(op1, tablaTerceto[indiceTerceto].dato2);
-          printf("\n\n%s\n\n",op1);
-          crearFloat(op1);
-          crearInstruccion(pf, "\t", "FLD ", op1, "");
-        }
-  if(*(tablaTerceto[indiceTerceto].dato3) == '['){
-    strcpy(op1, tercetoLeido[atoi(tablaTerceto[indiceTerceto].dato3+1)].aux);
-    crearInstruccion(pf, "\t", "FCOMP", op1, "");
-  }else
+        strcpy(op1, "_");
+        strcat(op1, tablaTerceto[indiceTerceto].dato2);
+        printf("\n\n%s\n\n",op1);
+        crearFloat(op1);
+        crearInstruccion(pf, "\t", "FLD ", op1, "");
+    }
+  
+	if(*(tablaTerceto[indiceTerceto].dato3) == '['){
+		strcpy(op1, tercetoLeido[atoi(tablaTerceto[indiceTerceto].dato3+1)].aux);
+		crearInstruccion(pf, "\t", "FCOMP", op1, "");
+	}else
     if(tipoElemento(tablaTerceto[indiceTerceto].dato3) == 1 || tipoElemento(tablaTerceto[indiceTerceto].dato3) == 2 ||
         tipoElemento(tablaTerceto[indiceTerceto].dato3) == 4 || tipoElemento(tablaTerceto[indiceTerceto].dato3) == 5 ){
-          strcpy(op1, "_");
-          strcat(op1, tablaTerceto[indiceTerceto].dato3);
+        strcpy(op1, "_");
+        strcat(op1, tablaTerceto[indiceTerceto].dato3);
           crearFloat(op1);
-          crearInstruccion(pf, "\t", "FCOMP", op1, "");
-        }
-  crearInstruccion(pf, "\t", "FSTSW","AX","");
-  crearInstruccion(pf, "\t", "SAHF", "","");
+        crearInstruccion(pf, "\t", "FCOMP", op1, "");
+    }
+	crearInstruccion(pf, "\t", "FSTSW","AX","");
+	crearInstruccion(pf, "\t", "SAHF", "","");*/
+}
+
+void crearRepeat(FILE *pf){
+	crearInstruccion(pf, "\t", tablaTerceto[indiceTerceto].dato1, "", "");
 }
 
 
@@ -984,38 +1238,44 @@ int tipoElemento(char *elemento)
   {
     if(strcmp(elemento, tablaId[i].valor) == 0){//es una constante
       if(strcmp(tablaId[i].tipo, "CONST_INT") == 0){
+		  printf("\t\tCONST_INT\n");
         return 1;
       }else{
         if(strcmp(tablaId[i].tipo, "CONST_FLOAT") == 0){
+			printf("\t\tCONST_FLOAT\n");
           return 2;
         }else{
-          if(strcmp(tablaId[i].tipo, "CONST_STRING") == 0){
-            return 3;
+			if(strcmp(tablaId[i].tipo, "CONST_STRING") == 0){
+				printf("\t\tCONST_STRING\n");
+				return 3;
           }
         }
       }
     }else{
-      if(strcmp(tablaId[i].valor, "?") == 0){//Es una variable
-        if(strcmp(tablaId[i].nombre, elemento) == 0){
-          if(strcmp(tablaId[i].tipo, "INTEGER") == 0){
-            return 4;
-          }else{
-            if(strcmp(tablaId[i].tipo, "FLOAT") == 0){
-              return 5;
-            }
-          }
-        }
-      }
+		if(strcmp(tablaId[i].valor, "?") == 0){//Es una variable
+			if(strcmp(tablaId[i].nombre, elemento) == 0){
+				if(strcmp(tablaId[i].tipo, "INTEGER") == 0){
+					printf("\t\tINTEGER\n");
+					return 4;
+				}else{
+					if(strcmp(tablaId[i].tipo, "FLOAT") == 0){
+						printf("\t\tFLOAT\n");
+						return 5;
+					}
+				}
+			}
+		}
     }
     i++;
   }
 
   return -1;
 }
+
 int esSalto(char *instruccion) {
-	
-	char saltos[9][10] = {"JE", "JNE", "JB", "JAE", "JA", "JBE", "JZ", "JNZ", "JMP"};
-	int i=0;
+	/***** LISTO *****/
+	char saltos[9][10] = {"JE", "JNE", "JNAE", "JNA", "JNBE", "JNB", "JZ", "JNZ", "JMP"};
+	int i;
 	for(i = 0; i < 9; i++) {
 		if(strcmp(instruccion, saltos[i]) == 0) {
 			return 1;
@@ -1027,27 +1287,23 @@ int esSalto(char *instruccion) {
 }
 
 void crearSalto(FILE *arch) {
+	/***** REVISAR *****/
 	char *cad;
 	char buffer[20];
 	int i;
 	cad = strchr(tablaTerceto[indiceTerceto].dato2,'[');
 	cad+=2; // Salteo el espacio entre el corchete y el indice
-	printf("\n\n\n%d\n\n\n", atoi(cad));
-	if(vecRep[atoi(cad)]!=-1)
-	{
-		sprintf(buffer, "ETQ_REPEAT_%d", atoi(cad));
-	crearInstruccion(arch, "\t", tablaTerceto[indiceTerceto].dato1, buffer, "");
+	//printf("\n\n\n%d\n\n\n", atoi(cad));
 
-	}
-	else{
-		vec[atoi(cad)]=atoi(cad);
-		sprintf(buffer, "ETQ_%d", atoi(cad));
-		crearInstruccion(arch, "\t", tablaTerceto[indiceTerceto].dato1, buffer, "");}
+	
+	sprintf(buffer, "ETQ_%d", atoi(cad));
+	crearInstruccion(arch, "\t", tablaTerceto[indiceTerceto].dato1, buffer, "");
 }
 
+
 void crearOUTPUT(FILE *arch) {
-	char subfijo[50] = "_";
-	
+	char subfijo[50] = "";
+	/***** LISTO *****/
 	
 	
 	if(tipoElemento(tablaTerceto[indiceTerceto].dato2) == 3) { //SI ES STRING
@@ -1063,6 +1319,7 @@ void crearOUTPUT(FILE *arch) {
 
 void crearINPUT(FILE *arch) {
 	char subfijo[50] = "_";
+	/***** LISTO *****/
 	/*if(tipoElemento(tablaTerceto[indiceTerceto].dato2) == 4) { //SI ES INTEGER
 		crearInstruccion(arch, "\t", "displayString", strcat(subfijo, tablaId[buscarPorValor(tablaTerceto[indiceTerceto].dato2)].nombre), "");
 	}*/
@@ -1075,12 +1332,28 @@ void crearINPUT(FILE *arch) {
 }	
 
 void crearInstruccion(FILE *pf,char *c1,char *c2,char *c3, char *c4){
-	
+	/***** LISTO *****/
 	fprintf(pf, "%s\t%s\t%s\t%s\n", c1, c2, c3, c4);
 }
 
-void reemplazo(char *v, char c1, char c2) {
 
+char *sacarComillaConst(char *val, char *esc){
+	int i;
+	char *sal = esc;
+    for (i=0; val[i] != '\0';i++)
+    {
+        if (val[i] != '\"')
+        {
+            *esc = val[i];
+            esc++;
+        }
+    }
+    *(esc) = '\0';
+    return sal;
+}
+
+void reemplazo(char *v, char c1, char c2) {
+	/***** LISTO *****/
     int i;
 
     for (i=0;v[i]!='\0';i++)
@@ -1094,6 +1367,7 @@ void reemplazo(char *v, char c1, char c2) {
 }
 
 int buscarPorValor(char *id){
+	/***** LISTO *****/
 	int i;
 	for(i = 0; i < numeroId; i++)
 	{
@@ -1103,3 +1377,13 @@ int buscarPorValor(char *id){
 	return -1;
 	
 }
+
+int leerIndiceTercero(char *dato){
+	/***** LISTO *****/
+	char *puntero;
+	puntero = strrchr(dato, '[');
+	
+	return atoi(puntero+2);
+}
+
+

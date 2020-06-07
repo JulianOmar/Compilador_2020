@@ -21,64 +21,66 @@ ID				{LETRA}({LETRA}|{DIGITO}|_)*
 COMENTARIO  	("--/")({CARACTER})*("--/"({CARACTER})*"/--")?({CARACTER})*("/--")
 
 
-CTE_E			(-?)([1-9])({DIGITO})*
-CTE_R			(-?)({DIGITO})*"."({DIGITO})*
-CTE_S 			\".*\"
+CTE_E		(-?)([1-9])({DIGITO})*
+CTE_R		(-?)({DIGITO})*"."({DIGITO})*
+CTE_S 		\".*\"
 
 %%
-"REPEAT"		{return C_REPEAT_A; }
-"UNTIL"			{return C_REPEAT_C; }
-"IF"			{return C_IF_A; }
-"ELSE"			{return C_IF_E; }
+"REPEAT"		{ printf("REPEAT\n"); 		return C_REPEAT_A; }
+"UNTIL"			{ printf("UNTIL");			return C_REPEAT_C; }
+"IF"			{ printf("IF");				return C_IF_A; }
+"ELSE"			{ printf("ELSE");			return C_IF_E; }
 
-"FILTER"		{return C_FILTER; }
-"_"				{return C_FILTER_REFENTEROS; }
+"FILTER"		{ printf("FILTER");			return C_FILTER; }
+"_"				{ printf("_");				return C_FILTER_REFENTEROS; }
 
-"PRINT"			{ return PRINT; }
-"READ"			{ return READ; }
+"PRINT"			{ printf("PRINT");			return PRINT; }
+"READ"			{ printf("READ");			return READ; }
 
 
 "VAR"			{ return VAR; }
 "ENDVAR"		{ return ENDVAR; }
-"CONST"			{ return CONST; }
-"Integer"		{ return INTEGER; }
-"Float"			{ return FLOAT; }
-"String"		{ return STRING; }
+"CONST"			{ printf("CONST"); 			return CONST; }
+"Integer"		{ printf("Integer");		return INTEGER; }
+"Float"			{ printf("Float");			return FLOAT; }
+"String"		{ printf("String");			return STRING; }
 
 
-"="				{ return OP_ASIG;}
-"+"				{ return OP_SUMA;}
-"-"				{ return OP_RESTA;}
-"*"				{ return OP_MUL;}
-"/"				{ return OP_DIV;}
+"="			{ printf("=");				return OP_ASIG;}
+"+"			{ printf("+");				return OP_SUMA;}
+"-"			{ printf("-");				return OP_RESTA;}
+"*"			{ printf("*");				return OP_MUL;}
+"/"			{ printf("/");				return OP_DIV;}
 
-"("				{ return PARENTESIS_A;}
-")"				{ return PARENTESIS_C;}
-"{"				{ return LLAVE_A;}
-"}"				{ return LLAVE_C;}
-"["				{ return CORCHETE_A; }
-"]"				{ return CORCHETE_C; }
-","				{ return COMA; }
-";"				{ return PYC; }
-":"				{ return DOSPUNTOS; }
+"("			{ printf("(");				return PARENTESIS_A;}
+")"			{ printf(")");				return PARENTESIS_C;}
+"{"			{ printf("{");				return LLAVE_A;}
+"}"			{ printf("}");				return LLAVE_C;}
+"["			{ printf("[");				return CORCHETE_A; }
+"]"			{ printf("]");				return CORCHETE_C; }
+","			{ printf(",");				return COMA; }
+";"			{ printf(";");				return PYC; }
+":"			{ printf(":");				return DOSPUNTOS; }
 
-"=="			{ return OP_IGUAL;}
-"!=="			{ return OP_DISTINTO;}
-"<"				{ return OP_MENOR;}
-"<="			{ return OP_MENORIGUAL;}
-">"				{ return OP_MAYOR;}
-">="			{ return OP_MAYORIGUAL;}
-"AND"			{ return OP_LOGICO_AND;}
-"OR"			{ return OP_LOGICO_OR;}
-"!"				{ return OP_NEGACION; }
+"=="		{ printf("=="); 	return OP_IGUAL;}
+"!=="		{ printf("!=="); 	return OP_DISTINTO;}
+"<"			{ printf("<"); 		return OP_MENOR;}
+"<="		{ printf("<="); 	return OP_MENORIGUAL;}
+">"			{ printf(">"); 		return OP_MAYOR;}
+">="		{ printf(">=");		return OP_MAYORIGUAL;}
+"AND"		{ printf("AND");	return OP_LOGICO_AND;}
+"OR"		{ printf("OR");		return OP_LOGICO_OR;}
+"!"			{ printf("!");		return OP_NEGACION; }
 
 {ID}			{
 					yylval.str_val = yytext;
+					printf( "ID(%s)", yylval.str_val);
 					return ID;
 				}
 {CTE_E}			{ 	if(atoi(yytext)<=32767 && atoi(yytext)>=-32768)
 					{
 						yylval.intval = atoi(yytext);
+						printf( "ENTERO(%d)", yylval.intval);
 						/*insertarEnTabla("","CONST_INT","--",yylval.intval,0);*/
 						return CTE_E;
 					}
@@ -87,7 +89,8 @@ CTE_S 			\".*\"
 {CTE_R}			{
 					if(atof(yytext)<=2147483647 && atof(yytext)>=-2137483648)
 					{
-						yylval.val = atof(yytext);						
+						yylval.val = atof(yytext);
+						printf( "FLOAT(%f)", yylval.val);
 						/*insertarEnTabla("","CONST_REAL","--",0,yylval.val);*/
 						return CTE_R;
 					}
@@ -96,15 +99,16 @@ CTE_S 			\".*\"
 {CTE_S}			{
 					if(strlen(yytext)<=32){ /* TAMBIEN CUENTA LAS COMILLAS; SON 2 COMILLAS + 30 CARACTERES */
 						yylval.str_val = yytext;
+						printf( "STRING(%s)", yylval.str_val);
 						/*insertarEnTabla(yylval.str_val,"CONST_STR",yylval.str_val,0,0);*/
 						return CTE_S;
 					}
 					cota_error("Constante String supera Maximo 30 caracteres.");
 				}
-{COMENTARIO}	{  }
-[\t{1}]			{  }		/* NO RETORNA TOKEN */
-[\n{1}]			{  }		/* NO RETORNA TOKEN */
-[" "{1}]		{  }		/* NO RETORNA TOKEN */
+{COMENTARIO}	{ printf("/* LINEA DE COMENTARIOS */"); }
+[\t{1}]			{ printf("\t"); }		/* NO RETORNA TOKEN */
+[\n{1}]			{ printf("\n"); }		/* NO RETORNA TOKEN */
+[" "{1}]		{ printf(" "); }		/* NO RETORNA TOKEN */
 
 "\n"
 "\t"

@@ -15,7 +15,7 @@ ENDVAR
 READ b;
 READ a;
 
-IF(b!==5) {
+IF(b > 5 OR a < 12) {
 	PRINT "PRIMERO";
 	IF(a==3) {
 		PRINT "SEGUNDO";
