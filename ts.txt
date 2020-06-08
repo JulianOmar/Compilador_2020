@@ -1,7 +1,16 @@
 NOMBRE				TIPO				VALOR			LONGITUD
-A                             INTEGER                       ?                             
-B                             INTEGER                       ?                             
-C                             INTEGER                       ?                             
-_44_00                        CONST_INTEGER                 44.00                         
-_24_00                        CONST_INTEGER                 24.00                         
+aa                            FLOAT                         ?                             
+b                             INTEGER                       ?                             
+a                             FLOAT                         ?                             
+d                             FLOAT                         ?                             
+p1                            INTEGER                       ?                             
+p2                            INTEGER                       ?                             
+p3                            INTEGER                       ?                             
+p4                            FLOAT                         ?                             
+h1                            INTEGER                       ?                             
+h2                            FLOAT                         ?                             
+_5_00                         CONST_INTEGER                 5.00                          
+_PRIMERO                      CONST_STRING                  "PRIMERO"                     7
+_3_00                         CONST_INTEGER                 3.00                          
+_SEGUNDO                      CONST_STRING                  "SEGUNDO"                     7
 auxFiltro                     INTEGER                       ?                             

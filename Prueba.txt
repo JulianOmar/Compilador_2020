@@ -1,10 +1,11 @@
 VAR
 
 
-	[Integer, Integer, Integer]:[A, B, C];
+	[Integer, Integer, Integer, Integer]:[A, B, C, D];
 	
 ENDVAR
 
-A = 44;
-B = 24;
-
+A = 107;
+B += 42;
+C = 8;
+D -= C;

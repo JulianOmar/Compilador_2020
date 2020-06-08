@@ -36,6 +36,7 @@ regTerceto tablaTerceto[2048];
 int numeroTerceto = 0;
 int condicionDoble = 0;
 char valorConstante[50];
+char valorConstEspecial[50];
 char aux1[31], aux2[31], opSalto[6];
 
 int indice_constante;
@@ -224,22 +225,29 @@ constante			:		CONST tiposoloid OP_ASIG CTE_E
 						insertarConstante(aux1, "CONST_STRING", valorConstante);
 					}		;
 
-asignacion			:
-					ID {
-						if((idAsig1 = existeID(yylval.str_val)) != -1)
-							strcpy(aux1, yylval.str_val);
-						else
-							yyerror("SINTAX ERROR: ID no declarado anteriormente =");}
+asignacion:	ID
+			{	if((idAsig1 = existeID(yylval.str_val)) != -1)
+					strcpy(aux1, yylval.str_val);
+				else
+					yyerror("SINTAX ERROR: ID no declarado anteriormente");
+			}	cosa
+			;
 
-					OP_ASIG tipoasig PYC{crearTerceto("=", aux1, valorConstante);}
-					| ASIG_MAS tipoasig PYC		{ crearTerceto("+=", aux1, valorConstante);}
-					| ASIG_MEN 	tipoasig PYC 	{ crearTerceto("-=", aux1, valorConstante);}
-    				| ASIG_MULT	tipoasig PYC 	{ crearTerceto("*=", aux1, valorConstante);}
-    				| ASIG_DIV 	tipoasig PYC 	{ crearTerceto("/=", aux1, valorConstante);}
-						
 
-    		
-    				;
+cosa:		OP_ASIG		tipoasig PYC {crearTerceto("=", aux1, valorConstante);}
+		|	ASIG_MAS 	tipoasig PYC {
+				//valorConstante = aux1 + valorConstante ; 
+				crearTerceto("+=", aux1, valorConstante);}
+
+		|	ASIG_MEN 	tipoasig PYC {crearTerceto("-=", aux1, valorConstante);}
+		|	ASIG_MULT 	tipoasig PYC {crearTerceto("*=", aux1, valorConstante);}
+		|	ASIG_DIV 	tipoasig PYC {crearTerceto("/=", aux1, valorConstante);}	    		
+    		;
+
+
+
+
+
 
 tipoasig			:		varconstante
 							{ 	if(strcmp(tablaId[idAsig1].tipo, aux2) != 0)
@@ -847,6 +855,10 @@ void recorrerTercetos(FILE *arch) {
 			crearASIG(arch);
 			continue;
 		}
+
+
+
+
 
 
 		if(strcmp(tablaTerceto[indiceTerceto].dato1, "CMP") == 0){
