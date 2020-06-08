@@ -43,7 +43,8 @@ Los comentarios se ignoran de manera que no generan un componente léxico o toke
 ##### DECLARACIONES
 Todas las variables deberán ser declaradas dentro de un bloque especial para ese fin, delimitado por las palabras reservadas VAR y ENDVAR, siguiendo el formato:
 
-```VAR
+```
+VAR
 [ Tipo de Dato ] : [ Lista de Variables]
 ENDVAR
 ```
