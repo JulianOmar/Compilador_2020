@@ -62,6 +62,12 @@ CTE_S 		\".*\"
 ";"			{ printf(";");				return PYC; }
 ":"			{ printf(":");				return DOSPUNTOS; }
 
+"+="		{printf("+=");				return ASIG_MAS;}
+"-="		{printf("-=");				return ASIG_MEN;}
+"*="		{printf("*=");				return ASIG_MULT;}
+"/="		{printf("/=");				return ASIG_DIV;}
+
+
 "=="		{ printf("=="); 	return OP_IGUAL;}
 "!=="		{ printf("!=="); 	return OP_DISTINTO;}
 "<"			{ printf("<"); 		return OP_MENOR;}

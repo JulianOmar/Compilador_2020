@@ -1,19 +1,7 @@
 NOMBRE				TIPO				VALOR			LONGITUD
-f1                            FLOAT                         ?                             
-f2                            FLOAT                         ?                             
-f3                            FLOAT                         ?                             
-f4                            FLOAT                         ?                             
-f5                            FLOAT                         ?                             
-f6                            FLOAT                         ?                             
-f7                            FLOAT                         ?                             
-i1                            INTEGER                       ?                             
-i2                            INTEGER                       ?                             
-i3                            INTEGER                       ?                             
-i4                            INTEGER                       ?                             
-i5                            INTEGER                       ?                             
-i6                            INTEGER                       ?                             
-i7                            INTEGER                       ?                             
-_1                            CONST_STRING                  "1"                           1
-_2                            CONST_STRING                  "2"                           1
+A                             INTEGER                       ?                             
+B                             INTEGER                       ?                             
+C                             INTEGER                       ?                             
+_44_00                        CONST_INTEGER                 44.00                         
 _24_00                        CONST_INTEGER                 24.00                         
 auxFiltro                     INTEGER                       ?                             
