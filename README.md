@@ -1,5 +1,5 @@
 # Compilador_2020
-El presnte complilador contiene fue realizado durante el segundo cuatrimentre 2019, el cual cunta conl los temas asignados:
+El presente complilador fue realizado durante el segundo cuatrimentre 2019, el cual cuenta con los siguientes temas asignados:
 - Constantes con nombre
 - Filter 
 - Tercetos
