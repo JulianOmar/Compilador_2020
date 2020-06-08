@@ -854,8 +854,33 @@ void recorrerTercetos(FILE *arch) {
 			printf("CREAR ASIG - %d\n", indiceTerceto);
 			crearASIG(arch);
 			continue;
+		}		
+		
+		if(strcmp(tablaTerceto[indiceTerceto].dato1, "+=") == 0){
+			printf("CREAR ASIG ESPEC += - %d\n", indiceTerceto);
+			crearASIG(arch);
+			continue;
 		}
 
+		if(strcmp(tablaTerceto[indiceTerceto].dato1, "-=") == 0){
+			printf("CREAR ASIG ESPEC -= - %d\n", indiceTerceto);
+			crearASIG(arch);
+			continue;
+		}		
+		
+		if(strcmp(tablaTerceto[indiceTerceto].dato1, "*=") == 0){
+			printf("CREAR ASIG ESPEC *= - %d\n", indiceTerceto);
+			crearASIG(arch);
+			continue;
+		}
+
+		if(strcmp(tablaTerceto[indiceTerceto].dato1, "/=") == 0){
+			printf("CREAR ASIG ESPEC /= - %d\n", indiceTerceto);
+			crearASIG(arch);
+			continue;
+		}		
+		
+	
 
 
 
@@ -1049,6 +1074,21 @@ void crearASIG(FILE *arch)
 
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void crearAuxFiltro(FILE *arch){
 
