@@ -37,7 +37,7 @@ int numeroTerceto = 0;
 int condicionDoble = 0;
 char valorConstante[50];
 char valorConstEspecial[50];
-char aux1[31], aux2[31], opSalto[6];
+char aux1[31], aux2[31], aux3[31], opSalto[6];
 
 int indice_constante;
 int indice_termino;
@@ -227,27 +227,39 @@ constante			:		CONST tiposoloid OP_ASIG CTE_E
 
 asignacion:	ID
 			{	if((idAsig1 = existeID(yylval.str_val)) != -1)
-					strcpy(aux1, yylval.str_val);
+					strcpy(aux3, yylval.str_val);
 				else
 					yyerror("SINTAX ERROR: ID no declarado anteriormente");
-			}	cosa
-			;
+			}
+			tipAsig { crearTerceto("=", aux3, aux2); };
 
 
-cosa:		OP_ASIG		tipoasig PYC {crearTerceto("=", aux1, valorConstante);}
-		|	ASIG_MAS 	tipoasig PYC {
-				//valorConstante = aux1 + valorConstante ; 
-				crearTerceto("+=", aux1, valorConstante);}
+tipAsig : OP_ASIG expresion_i /*tipoasig*/ PYC
+			{
+				sprintf(aux2, "[ %d ]", indice_expresion);				
+			}
 
-		|	ASIG_MEN 	tipoasig PYC {crearTerceto("-=", aux1, valorConstante);}
-		|	ASIG_MULT 	tipoasig PYC {crearTerceto("*=", aux1, valorConstante);}
-		|	ASIG_DIV 	tipoasig PYC {crearTerceto("/=", aux1, valorConstante);}	    		
-    		;
+		| 	ASIG_MAS 	tipoasig PYC {
+			indice_termino = crearTerceto("ADD", aux3, valorConstante);
+			sprintf(aux2, "[ %d ]", indice_termino);
+			
+		}
 
-
-
-
-
+		|	ASIG_MEN 	tipoasig PYC
+		{
+			indice_termino = crearTerceto("SUB", aux3, valorConstante);
+			sprintf(aux2, "[ %d ]", indice_termino);
+		}
+		|	ASIG_MULT 	tipoasig PYC
+		{
+			indice_termino = crearTerceto("MUL", aux3, valorConstante);
+			sprintf(aux2, "[ %d ]", indice_termino);
+		}
+		|	ASIG_DIV 	tipoasig PYC
+		{
+			indice_termino = crearTerceto("DIV", aux3, valorConstante);
+			sprintf(aux2, "[ %d ]", indice_termino);
+		};
 
 tipoasig			:		varconstante
 							{ 	if(strcmp(tablaId[idAsig1].tipo, aux2) != 0)
@@ -318,8 +330,8 @@ condicion			:		comparacion
 								indice_condicion = crearTerceto(opSalto, aux1, "--");
 								apilar(&pilaPos, indice_condicion);
 								condicionDoble = 0;
-							}	|
-							OP_NEGACION PARENTESIS_A comparacion PARENTESIS_C
+							}	
+							|OP_NEGACION PARENTESIS_A comparacion PARENTESIS_C
 							{	sprintf(aux1, "[ %d ]", indice_comparacion);
 								indice_condicion = crearTerceto(negarSalto(opSalto), aux1, "");
 								apilar(&pilaPos, indice_condicion);
@@ -363,8 +375,8 @@ comparacion			:		expresion_i op_comparacion expresion_d
 								sprintf(aux2, "[ %d ]", indice_condicionD);
 
 								indice_comparacion = crearTerceto("CMP", aux1, aux2);
-							}	|
-							filtro op_comparacion expresion_d
+							}	
+							|	filtro op_comparacion expresion_d
 							{	sprintf(aux2, "[ %d ]", indice_condicionD);
 
 								crearTerceto("auxFiltro", "--", "--");

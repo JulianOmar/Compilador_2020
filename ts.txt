@@ -3,7 +3,9 @@ A                             INTEGER                       ?
 B                             INTEGER                       ?                             
 C                             INTEGER                       ?                             
 D                             INTEGER                       ?                             
-_107_00                       CONST_INTEGER                 107.00                        
-_42_00                        CONST_INTEGER                 42.00                         
+_4_00                         CONST_INTEGER                 4.00                          
+_9_00                         CONST_INTEGER                 9.00                          
 _8_00                         CONST_INTEGER                 8.00                          
+_12_00                        CONST_INTEGER                 12.00                         
+_3_00                         CONST_INTEGER                 3.00                          
 auxFiltro                     INTEGER                       ?                             
