@@ -8,72 +8,23 @@ asd/--
 	[Integer, Float, Float]:[b,a,d];
 	[Integer, Integer, Integer, Float, Float]:[p1,p2,p3,p4];
 	[Integer]:[h1];
-	[Float, Integer, Float, Integer, Float]:[h2, h1];
+	[Float, Integer, Float, Integer, Float]:[h2, h1,h3,c];
 
 ENDVAR
 
 
-CONST constante1 = 2;
-CONST constante2 = .5;
-CONST constante3 = "HOLA";
-aa=a;
-d=2147483.0;
-CONST string1="ASD ASD AAASSD";
-h2=2.;
+
 p4=.5;
 
 IF(a<(b+p1*5)) {
 	aa=2.;
 }
 IF((a+25*h1)>3) {
-	aa=2.;
+	c=48;
 }
 IF(3<=b) {
-	h2=2.;
-}
-IF(3>=b) {
-	h2=2.;
-}
+	h2=2.;}
+
 IF(3<=b AND a<b) {
-	h2=2.;
-}
-
-
---/ la variable 'c' no fue declarada anteriormente /--
-IF(b!==5 OR 5==c) {
-	b = 52;
-	IF(z2>=z3) {
-		b=125;
-	}
-}	
-IF(3<=b) {
-	h2=2.;
-}
-
-REPEAT
-	b=3;
-	b=5;
-UNTIL(a<b);
-
-IF(a==6) {
-	PRINT "1";
-}
-ELSE {
-	PRINT "2";
-}
-
-IF(j==r) {
-	PRINT "3";
-	IF(123>asd){
-		PRINT "4";
-	}
-	ELSE {
-		IF(t>=3){
-			PRINT "5";
-			PRINT "5b";
-		}
-	}
-}
-ELSE {
-	PRINT "4";
+	h1=2;
 }

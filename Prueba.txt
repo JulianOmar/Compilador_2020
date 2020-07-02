@@ -1,12 +1,11 @@
 VAR
 
-
 	[Integer, Integer, Integer, Integer]:[A, B, C, D];
 	
 ENDVAR
 
-A = 4 + 9;
 B = 8;
+A = 4 - 9 - 8;
 
 A += 8;
 B -= 8;

@@ -37,7 +37,7 @@ int numeroTerceto = 0;
 int condicionDoble = 0;
 char valorConstante[50];
 char valorConstEspecial[50];
-char aux1[31], aux2[31], aux3[31], opSalto[6];
+char aux1[31], aux2[31], aux3[31], aux4[31], opSalto[6];
 
 int indice_constante;
 int indice_termino;
@@ -234,9 +234,12 @@ asignacion:	ID
 			tipAsig { crearTerceto("=", aux3, aux2); };
 
 
-tipAsig : OP_ASIG expresion_i /*tipoasig*/ PYC
+tipAsig : OP_ASIG expresion /*tipoasig*/ PYC
 			{
-				sprintf(aux2, "[ %d ]", indice_expresion);				
+				if(indice_expresion != -1)
+					sprintf(aux2, "[ %d ]", indice_expresion);
+				
+								
 			}
 
 		| 	ASIG_MAS 	tipoasig PYC {
@@ -370,11 +373,19 @@ comparacion_d		:		comparacion {	//indice_comparacionD = indice_comparacion+1;
 										} ;
 
 
-comparacion			:		expresion_i op_comparacion expresion_d
-							{	sprintf(aux1, "[ %d ]", indice_condicionI);
-								sprintf(aux2, "[ %d ]", indice_condicionD);
+comparacion			:		expresion_i
+							{
+								if (indice_condicionI != -1)
+									sprintf(aux4, "[ %d ]", indice_condicionI);
+								else
+									strcpy(aux4, aux2);
+							}
+							op_comparacion expresion_d
+							{							
+								if (indice_condicionD != -1)
+									sprintf(aux2, "[ %d ]", indice_condicionD);
 
-								indice_comparacion = crearTerceto("CMP", aux1, aux2);
+								indice_comparacion = crearTerceto("CMP", aux4, aux2);
 							}	
 							|	filtro op_comparacion expresion_d
 							{	sprintf(aux2, "[ %d ]", indice_condicionD);
@@ -398,44 +409,87 @@ op_comparacion      :       OP_MENOR {strcpy(opSalto, "JNB");} 		|
 
 
 
-expresion			:		termino	{ indice_expresion = indice_termino; }		|
-							expresion OP_SUMA termino
-							{	sprintf(aux1, "[ %d ]", indice_expresion);
-								sprintf(aux2, "[ %d ]", indice_termino);
-
-								indice_expresion = crearTerceto("ADD", aux1, aux2);
-							}		|
-							expresion OP_RESTA termino
-							{	sprintf(aux1, "[ %d ]", indice_expresion);
-								sprintf(aux2, "[ %d ]", indice_termino);
-
-								indice_expresion = crearTerceto("SUB", aux1, aux2);
+expresion			:		termino	{ indice_expresion = indice_termino; 
+							}		
+						|	expresion
+							{
+								if (indice_expresion != -1)
+									sprintf(aux3, "[ %d ]", indice_expresion);
+								else
+									strcpy(aux3, aux2);
+							}
+							OP_SUMA termino
+							{								
+								if (indice_termino != -1)
+									sprintf(aux2, "[ %d ]", indice_termino);							
+								indice_expresion = crearTerceto("ADD", aux3, aux2);
+							}
+						|	expresion
+							{
+								if (indice_expresion != -1)
+									sprintf(aux3, "[ %d ]", indice_expresion);
+								else
+									strcpy(aux3, aux2);
+							}
+							OP_RESTA termino
+							{	
+								if (indice_termino != -1)
+									sprintf(aux2, "[ %d ]", indice_termino);
+							
+								indice_expresion = crearTerceto("SUB", aux3, aux2);
 							}		;
 
-termino				:		factor { indice_termino = indice_factor; }				|
-							termino OP_MUL factor
+termino				:		factor {indice_termino = indice_factor; }
+							|
+							termino
 							{
-								sprintf(aux1, "[ %d ]", indice_termino);
-								sprintf(aux2, "[ %d ]", indice_factor);
+								if (indice_termino != -1)
+									sprintf(aux1, "[ %d ]", indice_termino);
+								else
+									strcpy(aux1, aux2);
+							}
+							OP_MUL factor
+							{
+								
+								if(indice_factor != -1)
+									sprintf(aux2, "[ %d ]", indice_factor);
 
 								indice_termino = crearTerceto("MUL", aux1, aux2);
-							}	|
-							termino OP_DIV factor
+							}
+							|
+								termino
+							{
+								if (indice_termino != -1)
+									sprintf(aux1, "[ %d ]", indice_termino);
+								else
+									strcpy(aux1, aux2);
+							}
+							OP_DIV factor
 							{	sprintf(aux1, "[ %d ]", indice_termino);
-								sprintf(aux2, "[ %d ]", indice_factor);
-
+								if (indice_factor != -1)
+									sprintf(aux2, "[ %d ]", indice_factor);
 								indice_termino = crearTerceto("DIV", aux1, aux2);
-							}	;
+							}
+							;
+							
 
 factor				:		ID
 							{	if(existeID(yylval.str_val) != -1){
-									indice_factor = crearTerceto(yylval.str_val,"--","--");
+									indice_factor = -1;															
+									strcpy(aux2, yylval.str_val);
 								} else { /*SINO ERROR PORQUE NO EXISTE*/
 									yyerror("SINTAX ERROR: ID no declarado anteriormente");
 								}
-							}				|
-							varconstante {indice_factor = crearTerceto(valorConstante, "--", "--");}	|
+							}				
+							|
+							varconstante {
+								indice_factor = -1;								
+								strcpy(aux2, valorConstante);
+								}	
+							;
+							|
 							PARENTESIS_A expresion PARENTESIS_C {indice_factor = indice_expresion;}	;
+							
 
 
 
@@ -868,29 +922,7 @@ void recorrerTercetos(FILE *arch) {
 			continue;
 		}		
 		
-		if(strcmp(tablaTerceto[indiceTerceto].dato1, "+=") == 0){
-			printf("CREAR ASIG ESPEC += - %d\n", indiceTerceto);
-			crearASIG(arch);
-			continue;
-		}
-
-		if(strcmp(tablaTerceto[indiceTerceto].dato1, "-=") == 0){
-			printf("CREAR ASIG ESPEC -= - %d\n", indiceTerceto);
-			crearASIG(arch);
-			continue;
-		}		
-		
-		if(strcmp(tablaTerceto[indiceTerceto].dato1, "*=") == 0){
-			printf("CREAR ASIG ESPEC *= - %d\n", indiceTerceto);
-			crearASIG(arch);
-			continue;
-		}
-
-		if(strcmp(tablaTerceto[indiceTerceto].dato1, "/=") == 0){
-			printf("CREAR ASIG ESPEC /= - %d\n", indiceTerceto);
-			crearASIG(arch);
-			continue;
-		}		
+	
 		
 	
 
