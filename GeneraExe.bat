@@ -10,7 +10,7 @@ cls
 echo "Compilacion en curso"
 c:\MinGW\bin\gcc.exe lex.yy.c y.tab.c -o GrupoR2.exe
 pause
-GrupoR2.exe Prueba3.txt
+GrupoR2.exe Prueba.txt
 del lex.yy.c
 del y.tab.c
 del y.output

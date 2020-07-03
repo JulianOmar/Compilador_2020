@@ -3,13 +3,31 @@ aa                            FLOAT                         ?
 b                             INTEGER                       ?                             
 a                             FLOAT                         ?                             
 d                             FLOAT                         ?                             
-p1                            INTEGER                       ?                             
-p2                            INTEGER                       ?                             
-p3                            INTEGER                       ?                             
-p4                            FLOAT                         ?                             
-h1                            INTEGER                       ?                             
-h2                            FLOAT                         ?                             
+f1                            FLOAT                         ?                             
+f2                            FLOAT                         ?                             
+f3                            FLOAT                         ?                             
+f4                            FLOAT                         ?                             
+f5                            FLOAT                         ?                             
+f6                            FLOAT                         ?                             
+f7                            FLOAT                         ?                             
+i1                            INTEGER                       ?                             
+i2                            INTEGER                       ?                             
+i3                            INTEGER                       ?                             
+i4                            INTEGER                       ?                             
+i5                            INTEGER                       ?                             
+i6                            INTEGER                       ?                             
+i7                            INTEGER                       ?                             
+constante1                    CONST_INTEGER                 2.00                          
+constante2                    CONST_FLOAT                   0.5                           
+constante3                    CONST_STRING                  "HOLA"                        4
+_2147483_00                   CONST_FLOAT                   2147483.00                    
+string1                       CONST_STRING                  "ASD ASD AAASSD"              14
+_2_00                         CONST_FLOAT                   2.00                          
+_0_50                         CONST_FLOAT                   0.50                          
 _5_00                         CONST_INTEGER                 5.00                          
+_15_00                        CONST_INTEGER                 15.00                         
+_1_00                         CONST_INTEGER                 1.00                          
+_0_60                         CONST_FLOAT                   0.60                          
 _12_00                        CONST_INTEGER                 12.00                         
 _PRIMERO                      CONST_STRING                  "PRIMERO"                     7
 _3_00                         CONST_INTEGER                 3.00                          

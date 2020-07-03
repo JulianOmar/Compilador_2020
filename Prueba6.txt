@@ -1,0 +1,52 @@
+VAR
+--/  as	d23 . ?
+
+asd/--
+--/aaa--/bbb/--ccc/--
+
+	[Float]:[aa, bb];
+	[Integer, Float, Float,Integer,Integer]:[b,a,c,d];
+	[Integer, Integer, Integer,  Float, Float]:[p1,p2,p3,p4];
+	[Integer]:[h1];
+	[Float, Integer, Float, Integer, Float]:[h2, h1, h3];
+
+ENDVAR
+
+
+CONST constante1 = 2;
+CONST constante2 = .5;
+CONST constante3 = "HOLA";
+aa=a;
+d=2147483.0;
+CONST string1="ASD ASD AAASSD";
+h2=2.;
+p4=.5;
+
+
+
+IF(3<=b) {
+	h2=2.;
+}
+
+IF(3<=b AND a<b) {
+	h2=2.;
+}
+
+IF(b!==5 OR 5==a) {
+	b = 52;
+	IF(h2>=h3) {
+		b=125;
+	}
+}	
+IF(3<=b) {
+	h2=2.;
+}
+
+
+IF(a==6) {
+	PRINT "1";
+}
+ELSE {
+	PRINT "2";
+}
+ b+=5;
